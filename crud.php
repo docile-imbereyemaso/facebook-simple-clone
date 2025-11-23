@@ -33,8 +33,24 @@ if (isset($_GET['logout'])) {
     header("Location: index.php");
     exit();
 }
-
-
+// delete single student
+if (isset($_GET['delete_id'])) {
+    $deleteId = intval($_GET['delete_id']);
+    $stmt = $conn->prepare("DELETE FROM student WHERE id = ?");
+    $stmt->bind_param("i", $deleteId);
+    $stmt->execute();
+    $stmt->close();
+    header("Location: crud.php");
+    exit();
+}
+// Fetch students (optional if you want dashboard CRUD)
+$students = [];
+$result = $conn->query("SELECT * FROM student ORDER BY id ASC");
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $students[] = $row;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -45,6 +61,93 @@ if (isset($_GET['logout'])) {
     <title>Facebook Dashboard Clone</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
+
+    <style>
+        /* General table styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Arial, sans-serif;
+  margin: 20px 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Table header */
+thead {
+  background-color: #4CAF50;
+  color: white;
+  text-align: left;
+}
+
+thead th {
+  padding: 12px 15px;
+  font-size: 16px;
+}
+
+/* Table body */
+tbody td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Alternating row colors */
+tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Hover effect */
+tbody tr:hover {
+  background-color: #f1f1f1;
+  cursor: pointer;
+}
+
+/* Action links */
+td a {
+  text-decoration: none;
+  margin-right: 10px;
+  color: #2196F3;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+td a:hover {
+  color: #0b7dda;
+}
+
+/* Center text for empty row */
+tbody tr td[colspan] {
+  text-align: center;
+  font-style: italic;
+  color: #888;
+}
+/* Add User Button Styling */
+#addUserBtn {
+  display: inline-block;
+  width: fit-content;
+  padding: 10px 20px;
+  background-color: #4CAF50; /* Green */
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background-color 0.3s, transform 0.2s;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+#addUserBtn:hover {
+  background-color: #45a049; /* Slightly darker green */
+  transform: translateY(-2px);
+}
+
+#addUserBtn:active {
+  background-color: #3e8e41;
+  transform: translateY(0);
+}
+
+    </style>
 </head>
 <body>
 
@@ -100,7 +203,7 @@ if (isset($_GET['logout'])) {
             </div>
             <div class="sidebar-item">
                 <div class="icon-placeholder" style="color: #1877f2;"><i class="fas fa-chart-bar"></i></div>
-                <a style="margin-left: 12px;" href="./crud.php">Student Information System(CRUD)</a>
+                <span style="margin-left: 12px;">Student Information System(CRUD)</span>
             </div>
             <div class="sidebar-item">
                 <div class="icon-placeholder icon-memories"><i class="fas fa-clock"></i></div>
@@ -136,30 +239,36 @@ if (isset($_GET['logout'])) {
 
         <!-- FEED -->
         <section class="feed">
-            <div class="remember-card">
-                <i class="fas fa-times close-btn"></i>
-                <div class="computer-icon">
-                    <i class="fas fa-desktop"></i>
-                </div>
-                <h3>Remember Password</h3>
-                <p>Next time you log in on this browser, just click your profile picture instead of typing a password.</p>
-                <div class="btn-group">
-                    <button class="btn btn-blue">OK</button>
-                    <button class="btn btn-gray">Not Now</button>
-                </div>
-            </div>
+            <a id="addUserBtn" href="crud-add.php">Add new user</a>
+              <table>
+    <thead>
+      <tr>
+        <th>No</th>
+        <th>Full Names</th>
+        <th>Email</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if(count($students) > 0): ?>
+        <?php foreach($students as $index => $student): ?>
+          <tr>
+            <td><?= $index + 1 ?></td>
+            <td><?= htmlspecialchars($student['full_name']) ?></td>
+            <td><?= htmlspecialchars($student['email']) ?></td>
+            <td>
+              <a href="crud-edit.php?id=<?= $student['id'] ?>">Edit</a> 
+              <a href="?delete_id=<?= $student['id'] ?>" onclick="return confirm('Are you sure you want to delete this user?')">Delete</a>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+      <?php else: ?>
+        <tr><td colspan="4" style="text-align:center;">No users found.</td></tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
 
-            <div class="create-post">
-                <div class="cp-top">
-                    <img src="https://ui-avatars.com/api/?name=<?= urlencode($user['username']) ?>&background=gold&color=000" alt="User">
-                    <div class="cp-input">What's on your mind, <?= htmlspecialchars($user['username']) ?>?</div>
-                </div>
-                <div class="cp-bottom">
-                    <div class="cp-action"><i class="fas fa-video" style="color: #f02849;"></i> Live video</div>
-                    <div class="cp-action"><i class="fas fa-images" style="color: #45bd62;"></i> Photo/video</div>
-                    <div class="cp-action"><i class="fas fa-laugh-beam" style="color: #f7b928;"></i> Feeling/activity</div>
-                </div>
-            </div>
+            
 
             <!-- Add stories, posts, etc. -->
         </section>

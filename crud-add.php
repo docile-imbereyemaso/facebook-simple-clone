@@ -33,8 +33,59 @@ if (isset($_GET['logout'])) {
     header("Location: index.php");
     exit();
 }
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: index.php");
+    exit();
+}
 
+// Initialize variables
+$full_name = $email = "";
+$error = "";
 
+// Process form submission
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Validate and sanitize inputs
+    $full_name = trim($_POST['full_name']);
+    $email = trim($_POST['email']);
+    
+    // Basic validation
+    if (empty($full_name)) {
+        $error = "Full name is required";
+    } elseif (empty($email)) {
+        $error = "Email is required";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Invalid email format";
+    } else {
+        // Check if email already exists
+        $check_stmt = $conn->prepare("SELECT id FROM student WHERE email = ?");
+        $check_stmt->bind_param("s", $email);
+        $check_stmt->execute();
+        $check_stmt->store_result();
+        
+        if ($check_stmt->num_rows > 0) {
+            $error = "Email already exists in the database";
+        } else {
+            // Insert new student
+            $insert_stmt = $conn->prepare("INSERT INTO student (full_name, email) VALUES (?, ?)");
+            $insert_stmt->bind_param("ss", $full_name, $email);
+            
+            if ($insert_stmt->execute()) {
+                // Set success message in session
+                $_SESSION['success_message'] = "User '$full_name' has been successfully added!";
+                
+                // Redirect to dashboard
+                header("Location: crud.php");
+                exit();
+            } else {
+                $error = "Error adding user: " . $conn->error;
+            }
+            
+            $insert_stmt->close();
+        }
+        $check_stmt->close();
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -45,6 +96,113 @@ if (isset($_GET['logout'])) {
     <title>Facebook Dashboard Clone</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
+
+<style>
+  
+/* Main container */
+.main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+/* Form box styling */
+.form-box {
+  background-color: #ffffff;
+  padding: 30px 40px;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Form title and labels */
+.form-box label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+  margin-top: 15px;
+  color: #333;
+}
+
+/* Input fields */
+.form-box input[type="text"],
+.form-box input[type="email"] {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.form-box input[type="text"]:focus,
+.form-box input[type="email"]:focus {
+  border-color: #4CAF50;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+  outline: none;
+}
+
+/* Error messages */
+.error {
+  color: #e74c3c;
+  font-size: 12px;
+  display: none; /* You can toggle display via JS */
+}
+
+.server-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  border: 1px solid #f5c6cb;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Submit button */
+.form-box button[type="submit"] {
+  width: 100%;
+  padding: 12px;
+  background-color: #4CAF50;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 5px;
+  margin-top: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.form-box button[type="submit"]:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+}
+
+.form-box button[type="submit"]:active {
+  background-color: #3e8e41;
+  transform: translateY(0);
+}
+
+/* Back link */
+.form-box .back {
+  display: block;
+  margin-top: 15px;
+  text-align: center;
+  color: #2196F3;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.3s;
+}
+
+.form-box .back:hover {
+  color: #0b7dda;
+}
+</style>
 </head>
 <body>
 
@@ -85,7 +243,7 @@ if (isset($_GET['logout'])) {
     <div class="container">
 
         <!-- LEFT SIDEBAR -->
-        <aside class="sidebar-left">
+       <aside class="sidebar-left">
             <div class="sidebar-item">
                 <img src="https://ui-avatars.com/api/?name=<?= urlencode($user['username']) ?>&background=000&color=fff" alt="Profile">
                 <span><?= htmlspecialchars($user['username']) ?></span>
@@ -136,30 +294,35 @@ if (isset($_GET['logout'])) {
 
         <!-- FEED -->
         <section class="feed">
-            <div class="remember-card">
-                <i class="fas fa-times close-btn"></i>
-                <div class="computer-icon">
-                    <i class="fas fa-desktop"></i>
-                </div>
-                <h3>Remember Password</h3>
-                <p>Next time you log in on this browser, just click your profile picture instead of typing a password.</p>
-                <div class="btn-group">
-                    <button class="btn btn-blue">OK</button>
-                    <button class="btn btn-gray">Not Now</button>
-                </div>
-            </div>
+  <div class="main">
+  <div class="form-box">
+ 
 
-            <div class="create-post">
-                <div class="cp-top">
-                    <img src="https://ui-avatars.com/api/?name=<?= urlencode($user['username']) ?>&background=gold&color=000" alt="User">
-                    <div class="cp-input">What's on your mind, <?= htmlspecialchars($user['username']) ?>?</div>
-                </div>
-                <div class="cp-bottom">
-                    <div class="cp-action"><i class="fas fa-video" style="color: #f02849;"></i> Live video</div>
-                    <div class="cp-action"><i class="fas fa-images" style="color: #45bd62;"></i> Photo/video</div>
-                    <div class="cp-action"><i class="fas fa-laugh-beam" style="color: #f7b928;"></i> Feeling/activity</div>
-                </div>
-            </div>
+    <!-- Display server-side error message -->
+    <?php if (!empty($error)): ?>
+      <div class="server-error">
+        <?php echo htmlspecialchars($error); ?>
+      </div>
+    <?php endif; ?>
+
+    <form id="addForm" action="<?php $_SERVER["PHP_SELF"] ?>" method="POST">
+      <label>Full Names</label>
+      <input type="text" name="full_name" id="fullName" value="<?php echo htmlspecialchars($full_name); ?>" required>
+      <span id="nameError" class="error">Please enter full name</span>
+
+      <label>Email</label>
+      <input type="email" name="email" id="email" value="<?php echo htmlspecialchars($email); ?>" required>
+      <span id="emailError" class="error">Please enter a valid email</span>
+
+      <button type="submit">Add User</button>
+    </form>
+
+    <a class="back" href="crud.php">← Back to Dashboard</a>
+  </div>
+</div>
+             
+
+            
 
             <!-- Add stories, posts, etc. -->
         </section>
