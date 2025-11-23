@@ -142,7 +142,7 @@ Connecting login system with CRUD project
 
 Clone the repository:
 
-git clone https://github.com/your-username/your-project.git
+git clone https://github.com/docile-imbereyemaso/facebook-simple-clone
 
 
 Import database:
@@ -162,10 +162,5 @@ Run using a local server such as:
 
 XAMPP
 
-WAMP
 
-Laragon
 
-Open in browser:
-
-http://localhost/your-project-folder/signup.php
